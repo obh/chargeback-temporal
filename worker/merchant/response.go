@@ -16,12 +16,6 @@ func main() {
 	}
 	defer c.Close()
 
-	// w := worker.New(c, workflows.TaskQueue, worker.Options{})
-
-	// w.RegisterWorkflow(workflows.ChargebackProcess)
-	// w.RegisterWorkflow(workflows.MerchantResponse)
-	// w.RegisterActivity(workflows.SendEmail)
-
 	signal := workflows.MerchantSubmissionSignal{
 		MerchantResponded: true,
 		RespondedAt:       time.Now(),
@@ -38,8 +32,4 @@ func main() {
 		return
 	}
 
-	// err = w.Run(worker.InterruptCh())
-	// if err != nil {
-	// 	log.Fatalln("Unable to start worker", err)
-	// }
 }
