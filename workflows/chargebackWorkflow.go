@@ -60,11 +60,6 @@ func (w *chargebackWorkflow) pushStatus(ctx workflow.Context, status string) err
 func (w *chargebackWorkflow) waitForMerchantResponse(ctx workflow.Context, email string, cb models.ChargebackRequest) (*MerchantResponseResult, error) {
 	var r MerchantResponseResult
 
-	// err := w.pushStatus(ctx, "pending_merchant_response")
-	// if err != nil {
-	// 	return &r, err
-	// }
-
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
 		WorkflowID: fmt.Sprintf("MerchantResponse:%s", email),
 	})
@@ -74,6 +69,16 @@ func (w *chargebackWorkflow) waitForMerchantResponse(ctx workflow.Context, email
 	})
 	err := consentWF.Get(ctx, &r)
 	return &r, err
+}
+
+func (w *chargebackWorkflow) reverseFunds(ctx workflow.Context, payment models.Payment) (models.Payment, error) {
+	fmt.Println("demo code")
+	return payment, nil
+}
+
+func (w *chargebackWorkflow) sendDisputeFailedMail(ctx workflow.Context, payment models.Payment, customer models.Customer) error {
+	fmt.Println("demo code")
+	return nil
 }
 
 func ChargebackProcess(ctx workflow.Context, input *ChargebackInput) (*ChargebackResult, error) {
@@ -92,6 +97,13 @@ func ChargebackProcess(ctx workflow.Context, input *ChargebackInput) (*Chargebac
 		return &w.ChargebackState, err
 	}
 	w.MerchantResponded = response.MerchantResponded
+	if !w.MerchantResponded {
+		response, err := w.reverseFunds(ctx, input.Payment)
+		if err != nil {
+			return &w.ChargebackState, err
+		}
+		return &w.ChargebackState, w.sendDisputeFailedMail(ctx, response, input.Customer)
+	}
 
 	return &w.ChargebackState, nil
 }
