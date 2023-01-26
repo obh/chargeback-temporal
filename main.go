@@ -4,6 +4,7 @@ import (
 	"chargebackapp/delivery"
 	"chargebackapp/models"
 	"chargebackapp/temporal"
+	"chargebackapp/utils"
 	"fmt"
 	"log"
 
@@ -16,11 +17,17 @@ import (
 
 func main() {
 	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
-	db.AutoMigrate(&models.ChargebackRequest{})
-
 	if err != nil {
 		panic("failed to connect database")
 	}
+	if res := db.Exec("PRAGMA foreign_keys = ON", nil); res.Error != nil {
+		panic("failed to initiate foreign keys")
+	}
+	db.AutoMigrate(&models.Payment{})
+	db.AutoMigrate(&models.Customer{})
+	db.AutoMigrate(&models.Chargeback{})
+
+	utils.InsertPayment(db)
 
 	c, err := temporal.NewClient(client.Options{})
 	if err != nil {

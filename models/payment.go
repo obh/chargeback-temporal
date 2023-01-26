@@ -1,11 +1,19 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type Payment struct {
-	Id        int
-	Amount    float64
-	Reference string
-	PaidOn    time.Time
-	Status    string
+	gorm.Model
+	Id         int
+	Currency   string
+	Amount     float64
+	Reference  string
+	PaidOn     time.Time
+	Status     string
+	CustomerID int
+	Customer   Customer
 }

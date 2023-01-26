@@ -14,15 +14,13 @@ const (
 )
 
 type ChargebackInput struct {
-	Chargeback models.ChargebackRequest
-	Customer   models.Customer
+	Chargeback models.Chargeback
 	Payment    models.Payment
 }
 
 type ChargebackState struct {
 	MerchantResponded bool
-	Chargeback        models.ChargebackRequest
-	Customer          models.Customer
+	Chargeback        models.Chargeback
 	Payment           models.Payment
 	Documents         map[string]interface{}
 	MessageHistory    []string
@@ -57,7 +55,7 @@ func (w *chargebackWorkflow) pushStatus(ctx workflow.Context, status string) err
 	)
 }
 
-func (w *chargebackWorkflow) waitForMerchantResponse(ctx workflow.Context, email string, cb models.ChargebackRequest) (*MerchantResponseResult, error) {
+func (w *chargebackWorkflow) waitForMerchantResponse(ctx workflow.Context, email string, cb models.Chargeback) (*MerchantResponseResult, error) {
 	var r MerchantResponseResult
 
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
@@ -86,13 +84,12 @@ func ChargebackProcess(ctx workflow.Context, input *ChargebackInput) (*Chargebac
 		ctx,
 		&ChargebackState{
 			Chargeback:     input.Chargeback,
-			Customer:       input.Customer,
 			Payment:        input.Payment,
 			Documents:      make(map[string]interface{}),
 			MessageHistory: make([]string, 10),
 		})
 
-	response, err := w.waitForMerchantResponse(ctx, input.Customer.Email, input.Chargeback)
+	response, err := w.waitForMerchantResponse(ctx, input.Payment.Customer.Email, input.Chargeback)
 	if err != nil {
 		return &w.ChargebackState, err
 	}
@@ -102,7 +99,7 @@ func ChargebackProcess(ctx workflow.Context, input *ChargebackInput) (*Chargebac
 		if err != nil {
 			return &w.ChargebackState, err
 		}
-		return &w.ChargebackState, w.sendDisputeFailedMail(ctx, response, input.Customer)
+		return &w.ChargebackState, w.sendDisputeFailedMail(ctx, response, input.Payment.Customer)
 	}
 
 	return &w.ChargebackState, nil
