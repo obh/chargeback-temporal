@@ -4,12 +4,14 @@ import (
 	"chargebackapp/models"
 	"chargebackapp/utils"
 	"chargebackapp/workflows"
+	"context"
 	"errors"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"go.temporal.io/sdk/client"
@@ -29,6 +31,7 @@ func AddChargebackHandler(e *echo.Echo, db *gorm.DB, c client.Client) {
 	cb := &ChargebackHandler{db: db, temporalClient: c}
 	e.PUT("/chargeback", cb.addChargeback)
 	e.POST("/notify", cb.notifyMerchant)
+	e.POST("/response", cb.handleMerchantResponse)
 }
 
 func (h *ChargebackHandler) addChargeback(ctx echo.Context) error {
@@ -46,9 +49,10 @@ func (h *ChargebackHandler) addChargeback(ctx echo.Context) error {
 	h.db.Create(chargeback)
 	fmt.Println("chargeback result: ", chargeback)
 
-	input := &workflows.ChargebackInput{
+	input := workflows.ChargebackWFInput{
 		Chargeback: *chargeback,
 		Payment:    payment,
+		Merchant:   utils.GetMerchant(),
 	}
 	_, err := h.temporalClient.ExecuteWorkflow(
 		ctx.Request().Context(),
@@ -67,6 +71,31 @@ func (h *ChargebackHandler) addChargeback(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, *chargeback)
 }
 
+func (h *ChargebackHandler) handleMerchantResponse(ctx echo.Context) error {
+	response := &models.MerchantResponse{}
+	if err := ctx.Bind(response); err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
+	err := h.signal(int(response.ChargebackId))
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, "something went wrongt")
+	}
+	return ctx.JSON(http.StatusOK, "ok")
+}
+
+func (h *ChargebackHandler) signal(chargebackId int) error {
+	signal := workflows.MerchantSubmissionSignal{
+		MerchantResponded: true,
+		RespondedAt:       time.Now(),
+		Message:           "response from merchant",
+		Proof:             "this is the proof",
+	}
+	workflowId := fmt.Sprintf("merchant_response:%d", chargebackId)
+	return h.temporalClient.SignalWorkflow(context.Background(), workflowId, "",
+		workflows.MerchantSubmissionSignalName, signal)
+
+}
+
 func (h *ChargebackHandler) notifyMerchant(ctx echo.Context) error {
 	notifyReq := &models.ChargebackNotifyMerchant{}
 	if err := ctx.Bind(notifyReq); err != nil {
@@ -80,21 +109,17 @@ func (h *ChargebackHandler) notifyMerchant(ctx echo.Context) error {
 	if err := h.db.First(&chargeback, uint(notifyReq.ChargebackID)).Error; err != nil {
 		return ctx.JSON(http.StatusNotFound, errors.New("chargeback not found"))
 	}
-	fmt.Println("here...")
 	f, _ := os.LookupEnv("TEMPLATE_FOLDER")
 	b, err := os.ReadFile(f + "/updateMerchant.html")
 	if err != nil {
-		fmt.Println(err)
 		return ctx.JSON(http.StatusInternalServerError, errors.New("email template not found"))
 	}
 	t, err := template.New("email").Parse(string(b))
 	if err != nil {
-		fmt.Println(err)
 		return ctx.JSON(http.StatusInternalServerError, errors.New("email template not parsed"))
 	}
-	err = utils.SendMail("rohit@freesmtpservers.com", "rohit@freesmtpservers.com", "Chargeback received", t, t, chargeback)
+	err = utils.SendMail("rohit@cashfree.com", "rohit@cashfree.com", "Chargeback received", t, t, chargeback)
 	if err != nil {
-		fmt.Println(err)
 		return ctx.JSON(http.StatusInternalServerError, errors.New("email not sent"))
 	}
 	return ctx.JSON(http.StatusOK, "sent")

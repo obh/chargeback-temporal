@@ -13,15 +13,15 @@ const (
 	TaskQueue = "chargeback-queue"
 )
 
-type ChargebackInput struct {
+type ChargebackWFInput struct {
 	Chargeback models.Chargeback
 	Payment    models.Payment
+	Merchant   models.Merchant
 }
 
 type ChargebackState struct {
 	MerchantResponded bool
-	Chargeback        models.Chargeback
-	Payment           models.Payment
+	WFInput           ChargebackWFInput
 	Documents         map[string]interface{}
 	MessageHistory    []string
 }
@@ -35,7 +35,7 @@ type chargebackWorkflow struct {
 }
 
 func ChargebackWorkflowId(chargebackId int) string {
-	return fmt.Sprintf("Chargeback:%d", chargebackId)
+	return fmt.Sprintf("chargeback:%d", chargebackId)
 }
 
 func newChargebackWorfklow(ctx workflow.Context, state *ChargebackState) *chargebackWorkflow {
@@ -55,16 +55,14 @@ func (w *chargebackWorkflow) pushStatus(ctx workflow.Context, status string) err
 	)
 }
 
-func (w *chargebackWorkflow) waitForMerchantResponse(ctx workflow.Context, email string, cb models.Chargeback) (*MerchantResponseResult, error) {
+func (w *chargebackWorkflow) waitForMerchantResponse(ctx workflow.Context, input ChargebackWFInput) (*MerchantResponseResult, error) {
 	var r MerchantResponseResult
 
 	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
-		WorkflowID: fmt.Sprintf("MerchantResponse:%s", email),
+		WorkflowID: fmt.Sprintf("merchant_response:%d", input.Chargeback.ID),
 	})
-	consentWF := workflow.ExecuteChildWorkflow(ctx, MerchantResponse, MerchantResponseWorkflowInput{
-		PrimaryEmail:      email,
-		ChargebackRequest: ChargebackInput{},
-	})
+
+	consentWF := workflow.ExecuteActivity(ctx, MerchantResponse, input)
 	err := consentWF.Get(ctx, &r)
 	return &r, err
 }
@@ -79,28 +77,27 @@ func (w *chargebackWorkflow) sendDisputeFailedMail(ctx workflow.Context, payment
 	return nil
 }
 
-func ChargebackProcess(ctx workflow.Context, input *ChargebackInput) (*ChargebackResult, error) {
+func ChargebackProcess(ctx workflow.Context, input ChargebackWFInput) (*ChargebackResult, error) {
 	w := newChargebackWorfklow(
 		ctx,
 		&ChargebackState{
-			Chargeback:     input.Chargeback,
-			Payment:        input.Payment,
+			WFInput:        input,
 			Documents:      make(map[string]interface{}),
 			MessageHistory: make([]string, 10),
 		})
 
-	response, err := w.waitForMerchantResponse(ctx, input.Payment.Customer.Email, input.Chargeback)
+	response, err := w.waitForMerchantResponse(ctx, input)
 	if err != nil {
 		return &w.ChargebackState, err
 	}
 	w.MerchantResponded = response.MerchantResponded
-	if !w.MerchantResponded {
-		response, err := w.reverseFunds(ctx, input.Payment)
-		if err != nil {
-			return &w.ChargebackState, err
-		}
-		return &w.ChargebackState, w.sendDisputeFailedMail(ctx, response, input.Payment.Customer)
-	}
+	// if !w.MerchantResponded {
+	// 	response, err := w.reverseFunds(ctx, input.Payment)
+	// 	if err != nil {
+	// 		return &w.ChargebackState, err
+	// 	}
+	// 	return &w.ChargebackState, w.sendDisputeFailedMail(ctx, response, input.Payment.Customer)
+	// }
 
 	return &w.ChargebackState, nil
 }

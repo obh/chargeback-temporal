@@ -24,9 +24,9 @@ func main() {
 	}
 
 	err = c.SignalWorkflow(context.Background(),
-		"MerchantResponse:rohit+customer@cgocashfree.com",
-		"27a5d7a0-f164-41c6-9d2a-e3783445b43d",
+		"MerchantResponse:rohit+customer@cgocashfree.com", "",
 		workflows.MerchantSubmissionSignalName, signal)
+
 	if err != nil {
 		log.Fatalln("Error sending the Signal", err)
 		return

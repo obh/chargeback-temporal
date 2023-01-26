@@ -1,7 +1,10 @@
 package workflows
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -9,7 +12,7 @@ import (
 
 const (
 	MerchantSubmissionSignalName = "merchant-submission"
-	MerchantSubmissionPeriod     = time.Hour * 24 * 7
+	MerchantSubmissionPeriod     = time.Hour * 1
 )
 
 type MerchantResponseResult struct {
@@ -34,13 +37,27 @@ func SendEmail(input SendEmailInput) (*SendEmailResult, error) {
 	return &result, nil
 }
 
-func emailMerchant(ctx workflow.Context, input *MerchantResponseWorkflowInput) error {
+func InvokeNotifyAPI(input ChargebackWFInput) error {
+	body := map[string]uint{
+		"payment_id":    input.Payment.ID,
+		"chargeback_id": input.Chargeback.ID,
+	}
+	buffer := new(bytes.Buffer)
+	json.NewEncoder(buffer).Encode(body)
+	_, err := http.Post("http://localhost:1323/notify", "application/json", buffer)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func emailMerchant(ctx workflow.Context, input ChargebackWFInput) error {
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute,
 	})
 
-	i := SendEmailInput{Email: input.PrimaryEmail, message: "Some standard text"}
-	f := workflow.ExecuteActivity(ctx, SendEmail, i)
+	// i := SendEmailInput{Email: input.Merchant.PrimaryEmail, message: "Some standard text"}
+	f := workflow.ExecuteActivity(ctx, InvokeNotifyAPI, input)
 
 	return f.Get(ctx, nil)
 }
@@ -67,7 +84,7 @@ func waitForSubmission(ctx workflow.Context) (*MerchantSubmission, error) {
 	return &response, err
 }
 
-func MerchantResponse(ctx workflow.Context, input *MerchantResponseWorkflowInput) (*MerchantResponseResult, error) {
+func MerchantResponse(ctx workflow.Context, input ChargebackWFInput) (*MerchantResponseResult, error) {
 	err := emailMerchant(ctx, input)
 	if err != nil {
 		return &MerchantResponseResult{}, err

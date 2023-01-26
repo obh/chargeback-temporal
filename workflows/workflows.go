@@ -2,11 +2,6 @@ package workflows
 
 import "time"
 
-type MerchantResponseWorkflowInput struct {
-	PrimaryEmail      string
-	ChargebackRequest ChargebackInput
-}
-
 type MerchantSubmission struct {
 	MerchantResponded bool
 	RespondedAt       time.Time

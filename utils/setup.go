@@ -27,3 +27,10 @@ func InsertPayment(db *gorm.DB) {
 	}
 	db.Create(payment)
 }
+
+func GetMerchant() models.Merchant {
+	return models.Merchant{
+		Name:         "Test merchant",
+		PrimaryEmail: "rohit+merchant@cashfree.com",
+	}
+}
