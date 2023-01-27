@@ -45,6 +45,7 @@ func (h *ChargebackHandler) addChargeback(ctx echo.Context) error {
 		fmt.Println(err)
 		return ctx.JSON(http.StatusNotFound, errors.New("payment not found"))
 	}
+	fmt.Println("payment found: ", payment.ID)
 	chargeback := &models.Chargeback{ChargebackRequest: *req}
 	h.db.Create(chargeback)
 	fmt.Println("chargeback result: ", chargeback)
@@ -101,6 +102,7 @@ func (h *ChargebackHandler) notifyMerchant(ctx echo.Context) error {
 	if err := ctx.Bind(notifyReq); err != nil {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
+	fmt.Println("Found request in /notify: ", notifyReq)
 	var payment models.Payment
 	var chargeback models.Chargeback
 	if err := h.db.First(&payment, notifyReq.PaymentId).Error; err != nil {

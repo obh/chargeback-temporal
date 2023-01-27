@@ -3,6 +3,7 @@ package workflows
 import (
 	"chargebackapp/models"
 	"fmt"
+	"time"
 
 	"go.temporal.io/sdk/log"
 
@@ -56,15 +57,22 @@ func (w *chargebackWorkflow) pushStatus(ctx workflow.Context, status string) err
 }
 
 func (w *chargebackWorkflow) waitForMerchantResponse(ctx workflow.Context, input ChargebackWFInput) (*MerchantResponseResult, error) {
-	var r MerchantResponseResult
 
-	ctx = workflow.WithChildOptions(ctx, workflow.ChildWorkflowOptions{
-		WorkflowID: fmt.Sprintf("merchant_response:%d", input.Chargeback.ID),
-	})
+	activityoptions := workflow.ActivityOptions{
+		// Set Activity Timeout duration
+		ScheduleToCloseTimeout: 10*time.Second + MerchantSubmissionPeriod,
+		HeartbeatTimeout:       5 * time.Minute,
+	}
+	ctx = workflow.WithActivityOptions(ctx, activityoptions)
+	w.logger.Info("invoking emailMerchant with details:", input.Payment.ID, input.Payment.ID)
+	err := emailMerchant(ctx, input)
+	if err != nil {
+		return &MerchantResponseResult{}, err
+	}
+	submission, err := waitForSubmission(ctx)
 
-	consentWF := workflow.ExecuteActivity(ctx, MerchantResponse, input)
-	err := consentWF.Get(ctx, &r)
-	return &r, err
+	result := MerchantResponseResult(*submission)
+	return &result, err
 }
 
 func (w *chargebackWorkflow) reverseFunds(ctx workflow.Context, payment models.Payment) (models.Payment, error) {

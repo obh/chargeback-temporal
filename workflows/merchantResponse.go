@@ -37,18 +37,22 @@ func SendEmail(input SendEmailInput) (*SendEmailResult, error) {
 	return &result, nil
 }
 
-func InvokeNotifyAPI(input ChargebackWFInput) error {
+func InvokeNotifyAPI(input ChargebackWFInput) (*SendEmailResult, error) {
+	var result SendEmailResult
 	body := map[string]uint{
 		"payment_id":    input.Payment.ID,
 		"chargeback_id": input.Chargeback.ID,
 	}
+	fmt.Println("sending request to InvokeNotifyAPI:", body)
 	buffer := new(bytes.Buffer)
 	json.NewEncoder(buffer).Encode(body)
 	_, err := http.Post("http://localhost:1323/notify", "application/json", buffer)
 	if err != nil {
-		return err
+		return &result, err
 	}
-	return nil
+
+	result.Status = true
+	return &result, nil
 }
 
 func emailMerchant(ctx workflow.Context, input ChargebackWFInput) error {
@@ -84,13 +88,13 @@ func waitForSubmission(ctx workflow.Context) (*MerchantSubmission, error) {
 	return &response, err
 }
 
-func MerchantResponse(ctx workflow.Context, input ChargebackWFInput) (*MerchantResponseResult, error) {
-	err := emailMerchant(ctx, input)
-	if err != nil {
-		return &MerchantResponseResult{}, err
-	}
-	submission, err := waitForSubmission(ctx)
+// func MerchantResponse(input ChargebackWFInput) (*MerchantResponseResult, error) {
+// 	err := emailMerchant(input)
+// 	if err != nil {
+// 		return &MerchantResponseResult{}, err
+// 	}
+// 	submission, err := waitForSubmission(ctx)
 
-	result := MerchantResponseResult(*submission)
-	return &result, err
-}
+// 	result := MerchantResponseResult(*submission)
+// 	return &result, err
+// }

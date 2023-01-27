@@ -13,7 +13,6 @@ func InsertPayment(db *gorm.DB) {
 	t = t.Add(time.Hour*time.Duration(12) + time.Minute*time.Duration(43) + time.Second + time.Duration(45))
 
 	payment := &models.Payment{
-		Id:        1,
 		Reference: "REF_1212399812312",
 		PaidOn:    t,
 		Currency:  "INR",

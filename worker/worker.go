@@ -19,8 +19,8 @@ func main() {
 	w := worker.New(c, workflows.TaskQueue, worker.Options{})
 
 	w.RegisterWorkflow(workflows.ChargebackProcess)
-	w.RegisterWorkflow(workflows.MerchantResponse)
-	w.RegisterActivity(workflows.SendEmail)
+	// w.RegisterActivity(workflows.MerchantResponse)
+	w.RegisterActivity(workflows.InvokeNotifyAPI)
 
 	err = w.Run(worker.InterruptCh())
 	if err != nil {

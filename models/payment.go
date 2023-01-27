@@ -8,7 +8,7 @@ import (
 
 type Payment struct {
 	gorm.Model
-	Id         int
+	// Id         int
 	Currency   string
 	Amount     float64
 	Reference  string
