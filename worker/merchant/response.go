@@ -1,10 +1,11 @@
 package main
 
 import (
-	"chargebackapp/workflows"
 	"context"
 	"log"
 	"time"
+
+	"github.com/obh/chargebackapp/workflows"
 
 	"go.temporal.io/sdk/client"
 )

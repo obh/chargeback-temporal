@@ -1,12 +1,13 @@
 package main
 
 import (
-	"chargebackapp/delivery"
-	"chargebackapp/models"
-	"chargebackapp/temporal"
-	"chargebackapp/utils"
 	"fmt"
 	"log"
+
+	"github.com/obh/chargebackapp/delivery"
+	"github.com/obh/chargebackapp/models"
+	"github.com/obh/chargebackapp/temporal"
+	"github.com/obh/chargebackapp/utils"
 
 	"github.com/labstack/echo/v4"
 

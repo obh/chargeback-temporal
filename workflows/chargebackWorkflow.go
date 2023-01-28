@@ -1,9 +1,10 @@
 package workflows
 
 import (
-	"chargebackapp/models"
 	"fmt"
 	"time"
+
+	"github.com/obh/chargebackapp/models"
 
 	"go.temporal.io/sdk/log"
 

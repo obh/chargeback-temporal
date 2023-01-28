@@ -1,8 +1,9 @@
 package utils
 
 import (
-	"chargebackapp/models"
 	"time"
+
+	"github.com/obh/chargebackapp/models"
 
 	"gorm.io/gorm"
 )
