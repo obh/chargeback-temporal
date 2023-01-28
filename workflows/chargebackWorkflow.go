@@ -56,7 +56,7 @@ func (w *chargebackWorkflow) pushStatus(ctx workflow.Context, status string) err
 	)
 }
 
-func (w *chargebackWorkflow) waitForMerchantResponse(ctx workflow.Context, input ChargebackWFInput) (*MerchantResponseResult, error) {
+func (w *chargebackWorkflow) waitForMerchantResponse(ctx workflow.Context, input *ChargebackWFInput) (*MerchantResponseResult, error) {
 
 	activityoptions := workflow.ActivityOptions{
 		// Set Activity Timeout duration
@@ -85,11 +85,11 @@ func (w *chargebackWorkflow) sendDisputeFailedMail(ctx workflow.Context, payment
 	return nil
 }
 
-func ChargebackProcess(ctx workflow.Context, input ChargebackWFInput) (*ChargebackResult, error) {
+func ChargebackProcess(ctx workflow.Context, input *ChargebackWFInput) (*ChargebackResult, error) {
 	w := newChargebackWorfklow(
 		ctx,
 		&ChargebackState{
-			WFInput:        input,
+			WFInput:        *input,
 			Documents:      make(map[string]interface{}),
 			MessageHistory: make([]string, 10),
 		})
@@ -99,6 +99,7 @@ func ChargebackProcess(ctx workflow.Context, input ChargebackWFInput) (*Chargeba
 		return &w.ChargebackState, err
 	}
 	w.MerchantResponded = response.MerchantResponded
+	w.logger.Info("back to merchant response: ", response.MerchantResponded)
 	// if !w.MerchantResponded {
 	// 	response, err := w.reverseFunds(ctx, input.Payment)
 	// 	if err != nil {

@@ -12,7 +12,7 @@ import (
 
 const (
 	MerchantSubmissionSignalName = "merchant-submission"
-	MerchantSubmissionPeriod     = time.Hour * 1
+	MerchantSubmissionPeriod     = time.Minute * 15
 )
 
 type MerchantResponseResult struct {
@@ -22,22 +22,11 @@ type MerchantResponseResult struct {
 	Proof             string
 }
 
-type SendEmailInput struct {
-	Email   string
-	message string
-}
 type SendEmailResult struct {
 	Status bool
 }
 
-func SendEmail(input SendEmailInput) (*SendEmailResult, error) {
-	var result SendEmailResult
-
-	fmt.Println("Sending email to merchant")
-	return &result, nil
-}
-
-func InvokeNotifyAPI(input ChargebackWFInput) (*SendEmailResult, error) {
+func InvokeNotifyAPI(input ChargebackWFInput) (SendEmailResult, error) {
 	var result SendEmailResult
 	body := map[string]uint{
 		"payment_id":    input.Payment.ID,
@@ -48,20 +37,20 @@ func InvokeNotifyAPI(input ChargebackWFInput) (*SendEmailResult, error) {
 	json.NewEncoder(buffer).Encode(body)
 	_, err := http.Post("http://localhost:1323/notify", "application/json", buffer)
 	if err != nil {
-		return &result, err
+		return result, err
 	}
 
 	result.Status = true
-	return &result, nil
+	return result, nil
 }
 
-func emailMerchant(ctx workflow.Context, input ChargebackWFInput) error {
+func emailMerchant(ctx workflow.Context, input *ChargebackWFInput) error {
 	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
 		StartToCloseTimeout: time.Minute,
 	})
 
 	// i := SendEmailInput{Email: input.Merchant.PrimaryEmail, message: "Some standard text"}
-	f := workflow.ExecuteActivity(ctx, InvokeNotifyAPI, input)
+	f := workflow.ExecuteActivity(ctx, InvokeNotifyAPI, *input)
 
 	return f.Get(ctx, nil)
 }

@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -31,7 +32,7 @@ func AddChargebackHandler(e *echo.Echo, db *gorm.DB, c client.Client) {
 	cb := &ChargebackHandler{db: db, temporalClient: c}
 	e.PUT("/chargeback", cb.addChargeback)
 	e.POST("/notify", cb.notifyMerchant)
-	e.POST("/response", cb.handleMerchantResponse)
+	e.POST("/response/:chargebackId", cb.handleMerchantResponse)
 }
 
 func (h *ChargebackHandler) addChargeback(ctx echo.Context) error {
@@ -62,7 +63,7 @@ func (h *ChargebackHandler) addChargeback(ctx echo.Context) error {
 			ID:        workflows.ChargebackWorkflowId(int(input.Chargeback.ID)),
 		},
 		workflows.ChargebackProcess,
-		input,
+		&input,
 	)
 
 	if err != nil {
@@ -73,18 +74,22 @@ func (h *ChargebackHandler) addChargeback(ctx echo.Context) error {
 }
 
 func (h *ChargebackHandler) handleMerchantResponse(ctx echo.Context) error {
+	cId, err := strconv.ParseUint(ctx.Param("chargebackId"), 10, 32)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, errors.New("invalid chargeback id"))
+	}
 	response := &models.MerchantResponse{}
 	if err := ctx.Bind(response); err != nil {
 		return ctx.JSON(http.StatusBadRequest, err)
 	}
-	err := h.signal(int(response.ChargebackId))
+	err = h.signal(cId)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, "something went wrongt")
 	}
 	return ctx.JSON(http.StatusOK, "ok")
 }
 
-func (h *ChargebackHandler) signal(chargebackId int) error {
+func (h *ChargebackHandler) signal(chargebackId uint64) error {
 	signal := workflows.MerchantSubmissionSignal{
 		MerchantResponded: true,
 		RespondedAt:       time.Now(),
