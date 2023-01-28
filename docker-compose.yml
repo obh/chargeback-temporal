@@ -1,0 +1,14 @@
+version: '3.9'
+
+services:
+  cf-cb-service:
+    container_name: cf-cb-service
+    build:
+      context: .
+      dockerfile: Dockerfile.multistage
+    ports:
+      - 1323:1323
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    volumes:
+      - ./test.db:/test.db

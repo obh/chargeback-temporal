@@ -6,5 +6,5 @@ COPY go.mod .
 COPY go.sum .
 RUN go install
 
-RUN go run worker.go
-#CMD ["/app/main"]
+RUN go build  -o /cb-worker
+CMD ["/cb-worker"]

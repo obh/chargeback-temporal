@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1
+
+## Build
+FROM golang:1.19.0-buster AS build
+RUN mkdir /app
+ADD . /app/
+WORKDIR /app
+
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+
+
+RUN go build -o /cb-worker
+
+## Deploy
+FROM gcr.io/distroless/base-debian10
+
+WORKDIR /
+
+COPY --from=build /cb-worker /cb-worker
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/cb-worker"]
