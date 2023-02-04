@@ -20,6 +20,4 @@ WORKDIR /
 
 COPY --from=build /cb-worker /cb-worker
 
-USER nonroot:nonroot
-
 ENTRYPOINT ["/cb-worker"]

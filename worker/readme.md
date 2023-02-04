@@ -1,2 +1,3 @@
-docker build -f Dockerfile.multistage -t cf-temporal-worker:multistage .
-docker run cf-temporal-worker:multistage
+docker login
+docker build -f Dockerfile.multistage -t sharroh/cf-temporal-worker:multistage . --no-cache
+docker run sharroh/cf-temporal-worker:multistage

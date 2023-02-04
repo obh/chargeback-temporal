@@ -1,0 +1,19 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chargeback-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: chargeback-worker
+  template:
+    metadata:
+      labels:
+        name: chargeback-worker
+    spec:
+      containers:
+      - name: application
+        image: sharroh/cf-temporal-worker:multistage
+        imagePullPolicy: Always
